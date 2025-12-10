@@ -8,7 +8,7 @@ export default function Home() {
         <Button appName='nest' className={styles.secondary}>
           Nest
         </Button>
-        <p>Nest</p>
+        <p>BIRD</p>
       </main>
     </div>
   )
