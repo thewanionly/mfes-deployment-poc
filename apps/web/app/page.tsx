@@ -8,6 +8,7 @@ export default function Home() {
         <Button appName='web' className={styles.secondary}>
           Web
         </Button>
+        Spider
       </main>
     </div>
   )
