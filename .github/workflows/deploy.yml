@@ -91,8 +91,30 @@ jobs:
 
       - name: Build selection
         run: |
+          set -euo pipefail
+
+          web_changed="${{ steps.changes.outputs.web }}"
+          nest_changed="${{ steps.changes.outputs.nest }}"
+
           if [ "$DEPLOY_APP" = "all" ]; then
-            pnpm build
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+              pnpm build
+              exit 0
+            fi
+
+            ran=0
+            if [ "$web_changed" = "true" ]; then
+              pnpm build --filter=web
+              ran=1
+            fi
+            if [ "$nest_changed" = "true" ]; then
+              pnpm build --filter=nest
+              ran=1
+            fi
+
+            if [ "$ran" = "0" ]; then
+              echo "No relevant changes detected for web or nest; skipping build."
+            fi
           else
             pnpm build --filter="$DEPLOY_APP"
           fi
