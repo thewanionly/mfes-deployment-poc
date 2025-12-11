@@ -1,6 +1,8 @@
 name: Deploy (Render)
 
 on:
+  push:
+    branches: ["main"]
   workflow_dispatch:
     inputs:
       app:
@@ -19,18 +21,22 @@ on:
 
 permissions:
   contents: read
+  deployments: write
 
 defaults:
   run:
     shell: bash
 
 jobs:
-  deploy:
-    name: Deploy ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.app || 'all' }}
+  build:
+    name: Build ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.app || 'all' }}
     runs-on: ubuntu-latest
     env:
       DEPLOY_APP: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.app || 'all' }}
       DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.sha }}
+    outputs:
+      deploy_app: ${{ steps.vars.outputs.deploy_app }}
+      deploy_ref: ${{ steps.vars.outputs.deploy_ref }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -49,6 +55,12 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      - name: Set deploy variables
+        id: vars
+        run: |
+          echo "deploy_app=${DEPLOY_APP}" >> "$GITHUB_OUTPUT"
+          echo "deploy_ref=${DEPLOY_REF}" >> "$GITHUB_OUTPUT"
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -60,34 +72,54 @@ jobs:
             pnpm build --filter="$DEPLOY_APP"
           fi
 
-      - name: Trigger Render deploy hook
-        env:
-          WEB_HOOK: ${{ secrets.RENDER_WEB_DEPLOY_HOOK }}
-          NEST_HOOK: ${{ secrets.RENDER_NEST_DEPLOY_HOOK }}
+  deploy-web:
+    name: Deploy web
+    needs: build
+    if: github.event_name == 'push' || needs.build.outputs.deploy_app == 'web' || needs.build.outputs.deploy_app == 'all'
+    runs-on: ubuntu-latest
+    environment: render-web
+    env:
+      WEB_HOOK: ${{ secrets.RENDER_WEB_DEPLOY_HOOK }}
+      DEPLOY_REF: ${{ needs.build.outputs.deploy_ref }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_REF }}
+
+      - name: Trigger Render deploy hook (web)
         run: |
           set -euo pipefail
 
-          case "$DEPLOY_APP" in
-            web) hook="$WEB_HOOK" ;;
-            nest) hook="$NEST_HOOK" ;;
-            all)
-              if [ -z "$WEB_HOOK" ] || [ -z "$NEST_HOOK" ]; then
-                echo "Render deploy hook secrets for web or nest are missing." >&2
-                exit 1
-              fi
-              curl -fsS -X POST "$WEB_HOOK"
-              curl -fsS -X POST "$NEST_HOOK"
-              exit 0
-              ;;
-            *)
-              echo "Unknown app selection: $DEPLOY_APP" >&2
-              exit 1
-              ;;
-          esac
-
-          if [ -z "${hook:-}" ]; then
-            echo "Render deploy hook secret for the selected app is missing." >&2
+          if [ -z "${WEB_HOOK:-}" ]; then
+            echo "Render deploy hook secret for web is missing." >&2
             exit 1
           fi
 
-          curl -fsS -X POST "$hook"
+          curl -fsS -X POST "$WEB_HOOK"
+
+  deploy-nest:
+    name: Deploy nest
+    needs: build
+    if: github.event_name == 'push' || needs.build.outputs.deploy_app == 'nest' || needs.build.outputs.deploy_app == 'all'
+    runs-on: ubuntu-latest
+    environment: render-nest
+    env:
+      NEST_HOOK: ${{ secrets.RENDER_NEST_DEPLOY_HOOK }}
+      DEPLOY_REF: ${{ needs.build.outputs.deploy_ref }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_REF }}
+
+      - name: Trigger Render deploy hook (nest)
+        run: |
+          set -euo pipefail
+
+          if [ -z "${NEST_HOOK:-}" ]; then
+            echo "Render deploy hook secret for nest is missing." >&2
+            exit 1
+          fi
+
+          curl -fsS -X POST "$NEST_HOOK"
