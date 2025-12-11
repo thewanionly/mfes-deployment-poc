@@ -1,0 +1,90 @@
+name: Deploy (Render)
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: Which app should be deployed?
+        required: true
+        type: choice
+        options:
+          - web
+          - nest
+          - all
+      ref:
+        description: Git ref (branch or tag) to deploy
+        required: true
+        type: string
+        default: main
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.app }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.0.0
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build selection
+        run: |
+          if [ "${{ inputs.app }}" = "all" ]; then
+            pnpm build
+          else
+            pnpm build --filter=${{ inputs.app }}
+          fi
+
+      - name: Trigger Render deploy hook
+        env:
+          WEB_HOOK: ${{ secrets.RENDER_WEB_DEPLOY_HOOK }}
+          NEST_HOOK: ${{ secrets.RENDER_NEST_DEPLOY_HOOK }}
+        run: |
+          set -euo pipefail
+
+          case "${{ inputs.app }}" in
+            web) hook="$WEB_HOOK" ;;
+            nest) hook="$NEST_HOOK" ;;
+            all)
+              if [ -z "$WEB_HOOK" ] || [ -z "$NEST_HOOK" ]; then
+                echo "Render deploy hook secrets for web or nest are missing." >&2
+                exit 1
+              fi
+              curl -fsS -X POST "$WEB_HOOK"
+              curl -fsS -X POST "$NEST_HOOK"
+              exit 0
+              ;;
+            *)
+              echo "Unknown app selection: ${{ inputs.app }}" >&2
+              exit 1
+              ;;
+          esac
+
+          if [ -z "${hook:-}" ]; then
+            echo "Render deploy hook secret for the selected app is missing." >&2
+            exit 1
+          fi
+
+          curl -fsS -X POST "$hook"
