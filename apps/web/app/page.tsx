@@ -8,7 +8,7 @@ export default function Home() {
         <Button appName='web' className={styles.secondary}>
           Web
         </Button>
-        <h1>Spider's Web</h1>
+        <h1>Spider’s Web</h1>
         <p>
           A spider’s web is a silk structure spun to trap prey and provide shelter. Using spinnerets
           at the tip of its abdomen, the spider extrudes liquid silk that hardens in air, anchoring
