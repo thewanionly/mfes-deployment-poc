@@ -1,6 +1,8 @@
 name: Deploy (Render)
 
 on:
+  push:
+    branches: ["main"]
   workflow_dispatch:
     inputs:
       app:
@@ -26,13 +28,16 @@ defaults:
 
 jobs:
   deploy:
-    name: Deploy ${{ inputs.app }}
+    name: Deploy ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.app || 'all' }}
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_APP: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.app || 'all' }}
+      DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.sha }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ env.DEPLOY_REF }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -51,10 +56,10 @@ jobs:
 
       - name: Build selection
         run: |
-          if [ "${{ inputs.app }}" = "all" ]; then
+          if [ "$DEPLOY_APP" = "all" ]; then
             pnpm build
           else
-            pnpm build --filter=${{ inputs.app }}
+            pnpm build --filter="$DEPLOY_APP"
           fi
 
       - name: Trigger Render deploy hook
@@ -64,7 +69,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          case "${{ inputs.app }}" in
+          case "$DEPLOY_APP" in
             web) hook="$WEB_HOOK" ;;
             nest) hook="$NEST_HOOK" ;;
             all)
@@ -77,7 +82,7 @@ jobs:
               exit 0
               ;;
             *)
-              echo "Unknown app selection: ${{ inputs.app }}" >&2
+              echo "Unknown app selection: $DEPLOY_APP" >&2
               exit 1
               ;;
           esac
