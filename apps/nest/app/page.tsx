@@ -5,9 +5,6 @@ export default function Home() {
   return (
     <div className={styles.page}>
       <main className={styles.main}>
-        <Button appName='nest' className={styles.secondary}>
-          Nest
-        </Button>
         <h1>Bird’s Nest</h1>
         <p>
           A nest is a bird’s handmade shelter, built to protect eggs and chicks from weather and
@@ -17,6 +14,9 @@ export default function Home() {
           insulation. Some species add mud or saliva as “glue,” and many repair or rebuild the nest
           each season to keep it safe and clean.
         </p>
+        <Button appName='nest' className={styles.secondary}>
+          Learn more about Bird’s Nest
+        </Button>
       </main>
     </div>
   )

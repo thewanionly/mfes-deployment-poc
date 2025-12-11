@@ -14,7 +14,7 @@ export default function Home() {
           minimal material, letting the spider hunt efficiently with little energy.
         </p>
         <Button appName='web' className={styles.secondary}>
-          Learn more
+          Learn more about Spider’s Web
         </Button>
       </main>
     </div>
