@@ -37,11 +37,14 @@ jobs:
     outputs:
       deploy_app: ${{ steps.vars.outputs.deploy_app }}
       deploy_ref: ${{ steps.vars.outputs.deploy_ref }}
+      web_changed: ${{ steps.changes.outputs.web }}
+      nest_changed: ${{ steps.changes.outputs.nest }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: ${{ env.DEPLOY_REF }}
+          fetch-depth: 0
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -61,6 +64,28 @@ jobs:
           echo "deploy_app=${DEPLOY_APP}" >> "$GITHUB_OUTPUT"
           echo "deploy_ref=${DEPLOY_REF}" >> "$GITHUB_OUTPUT"
 
+      - name: Detect changes
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          base: ${{ github.event.before || 'HEAD^' }}
+          ref: ${{ env.DEPLOY_REF }}
+          filters: |
+            web:
+              - 'apps/web/**'
+              - 'packages/**'
+              - 'turbo.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'package.json'
+            nest:
+              - 'apps/nest/**'
+              - 'packages/**'
+              - 'turbo.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'package.json'
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -75,7 +100,7 @@ jobs:
   deploy-web:
     name: Deploy web
     needs: build
-    if: github.event_name == 'push' || needs.build.outputs.deploy_app == 'web' || needs.build.outputs.deploy_app == 'all'
+    if: needs.build.outputs.web_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'web' || needs.build.outputs.deploy_app == 'all')
     runs-on: ubuntu-latest
     environment: render-web
     env:
@@ -101,7 +126,7 @@ jobs:
   deploy-nest:
     name: Deploy nest
     needs: build
-    if: github.event_name == 'push' || needs.build.outputs.deploy_app == 'nest' || needs.build.outputs.deploy_app == 'all'
+    if: needs.build.outputs.nest_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'nest' || needs.build.outputs.deploy_app == 'all')
     runs-on: ubuntu-latest
     environment: render-nest
     env:
