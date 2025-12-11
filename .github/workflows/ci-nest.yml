@@ -2,24 +2,8 @@ name: CI - Nest
 
 on:
   pull_request:
-    paths:
-      - "apps/nest/**"
-      - "packages/**"
-      - "turbo.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "package.json"
-      - ".github/workflows/**"
   push:
     branches: ["main"]
-    paths:
-      - "apps/nest/**"
-      - "packages/**"
-      - "turbo.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "package.json"
-      - ".github/workflows/**"
   workflow_dispatch:
 
 permissions:
