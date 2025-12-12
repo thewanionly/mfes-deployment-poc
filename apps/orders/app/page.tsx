@@ -5,8 +5,9 @@ export default function Home() {
   return (
     <div className={styles.page}>
       <main className={styles.main}>
-        <Button appName='orders' className={styles.secondary}>
-          Orders
+        <h1>Orders</h1>
+        <Button appName='products' className={styles.secondary}>
+          Learn more
         </Button>
       </main>
     </div>

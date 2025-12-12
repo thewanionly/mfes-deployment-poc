@@ -5,8 +5,9 @@ export default function Home() {
   return (
     <div className={styles.page}>
       <main className={styles.main}>
+        <h1>Products</h1>
         <Button appName='products' className={styles.secondary}>
-          Products
+          Learn more
         </Button>
       </main>
     </div>
