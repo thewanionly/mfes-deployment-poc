@@ -33,7 +33,7 @@ defaults:
 
 jobs:
   build:
-    name: Build ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.app || 'all' }}
+    name: Build
     runs-on: ubuntu-latest
     env:
       DEPLOY_APP: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.app || 'all' }}
