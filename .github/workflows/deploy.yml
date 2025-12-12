@@ -10,8 +10,6 @@ on:
         required: true
         type: choice
         options:
-          - web
-          - nest
           - products
           - orders
           - content
@@ -41,8 +39,6 @@ jobs:
     outputs:
       deploy_app: ${{ steps.vars.outputs.deploy_app }}
       deploy_ref: ${{ steps.vars.outputs.deploy_ref }}
-      web_changed: ${{ steps.changes.outputs.web }}
-      nest_changed: ${{ steps.changes.outputs.nest }}
       products_changed: ${{ steps.changes.outputs.products }}
       orders_changed: ${{ steps.changes.outputs.orders }}
       content_changed: ${{ steps.changes.outputs.content }}
@@ -79,20 +75,6 @@ jobs:
           base: ${{ github.event.before || 'HEAD^' }}
           ref: ${{ env.DEPLOY_REF }}
           filters: |
-            web:
-              - 'apps/web/**'
-              - 'packages/**'
-              - 'turbo.json'
-              - 'pnpm-lock.yaml'
-              - 'pnpm-workspace.yaml'
-              - 'package.json'
-            nest:
-              - 'apps/nest/**'
-              - 'packages/**'
-              - 'turbo.json'
-              - 'pnpm-lock.yaml'
-              - 'pnpm-workspace.yaml'
-              - 'package.json'
             products:
               - 'apps/products/**'
               - 'packages/**'
@@ -129,8 +111,6 @@ jobs:
         run: |
           set -euo pipefail
 
-          web_changed="${{ steps.changes.outputs.web }}"
-          nest_changed="${{ steps.changes.outputs.nest }}"
           products_changed="${{ steps.changes.outputs.products }}"
           orders_changed="${{ steps.changes.outputs.orders }}"
           content_changed="${{ steps.changes.outputs.content }}"
@@ -143,7 +123,7 @@ jobs:
             fi
 
             ran=0
-            for app in web nest products orders content customers; do
+            for app in products orders content customers; do
               changed_var="${app}_changed"
               if [ "${!changed_var}" = "true" ]; then
                 pnpm build --filter="$app"
@@ -152,63 +132,11 @@ jobs:
             done
 
             if [ "$ran" = "0" ]; then
-              echo "No relevant changes detected for web, nest, products, orders, content, or customers; skipping build."
+              echo "No relevant changes detected for products, orders, content, or customers; skipping build."
             fi
           else
             pnpm build --filter="$DEPLOY_APP"
           fi
-
-  deploy-web:
-    name: Deploy web
-    needs: build
-    if: needs.build.outputs.web_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'web' || needs.build.outputs.deploy_app == 'all')
-    runs-on: ubuntu-latest
-    environment: render-web
-    env:
-      WEB_HOOK: ${{ secrets.RENDER_WEB_DEPLOY_HOOK }}
-      DEPLOY_REF: ${{ needs.build.outputs.deploy_ref }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.DEPLOY_REF }}
-
-      - name: Trigger Render deploy hook (web)
-        run: |
-          set -euo pipefail
-
-          if [ -z "${WEB_HOOK:-}" ]; then
-            echo "Render deploy hook secret for web is missing." >&2
-            exit 1
-          fi
-
-          curl -fsS -X POST "$WEB_HOOK"
-
-  deploy-nest:
-    name: Deploy nest
-    needs: build
-    if: needs.build.outputs.nest_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'nest' || needs.build.outputs.deploy_app == 'all')
-    runs-on: ubuntu-latest
-    environment: render-nest
-    env:
-      NEST_HOOK: ${{ secrets.RENDER_NEST_DEPLOY_HOOK }}
-      DEPLOY_REF: ${{ needs.build.outputs.deploy_ref }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ env.DEPLOY_REF }}
-
-      - name: Trigger Render deploy hook (nest)
-        run: |
-          set -euo pipefail
-
-          if [ -z "${NEST_HOOK:-}" ]; then
-            echo "Render deploy hook secret for nest is missing." >&2
-            exit 1
-          fi
-
-          curl -fsS -X POST "$NEST_HOOK"
 
   deploy-products:
     name: Deploy products
