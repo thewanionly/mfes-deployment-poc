@@ -3,23 +3,6 @@ name: Deploy (Render)
 on:
   push:
     branches: ["main"]
-  workflow_dispatch:
-    inputs:
-      app:
-        description: Which app should be deployed to prod?
-        required: true
-        type: choice
-        options:
-          - products
-          - orders
-          - content
-          - customers
-          - all
-      ref:
-        description: Git ref (branch or tag) to deploy
-        required: true
-        type: string
-        default: main
 
 permissions:
   contents: read
@@ -34,10 +17,8 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     env:
-      DEPLOY_APP: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.app || 'all' }}
-      DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.sha }}
+      DEPLOY_REF: ${{ github.sha }}
     outputs:
-      deploy_app: ${{ steps.vars.outputs.deploy_app }}
       deploy_ref: ${{ steps.vars.outputs.deploy_ref }}
       products_changed: ${{ steps.changes.outputs.products }}
       orders_changed: ${{ steps.changes.outputs.orders }}
@@ -65,7 +46,6 @@ jobs:
       - name: Set deploy variables
         id: vars
         run: |
-          echo "deploy_app=${DEPLOY_APP}" >> "$GITHUB_OUTPUT"
           echo "deploy_ref=${DEPLOY_REF}" >> "$GITHUB_OUTPUT"
 
       - name: Detect changes
@@ -141,7 +121,7 @@ jobs:
   deploy-smoke-products:
     name: Deploy products (smoke)
     needs: build
-    if: github.event_name == 'push' && needs.build.outputs.products_changed == 'true'
+    if: needs.build.outputs.products_changed == 'true'
     runs-on: ubuntu-latest
     environment: render-products-smoke
     env:
@@ -168,7 +148,7 @@ jobs:
   deploy-smoke-orders:
     name: Deploy orders (smoke)
     needs: build
-    if: github.event_name == 'push' && needs.build.outputs.orders_changed == 'true'
+    if: needs.build.outputs.orders_changed == 'true'
     runs-on: ubuntu-latest
     environment: render-orders-smoke
     env:
@@ -195,7 +175,7 @@ jobs:
   deploy-smoke-content:
     name: Deploy content (smoke)
     needs: build
-    if: github.event_name == 'push' && needs.build.outputs.content_changed == 'true'
+    if: needs.build.outputs.content_changed == 'true'
     runs-on: ubuntu-latest
     environment: render-content-smoke
     env:
@@ -222,7 +202,7 @@ jobs:
   deploy-smoke-customers:
     name: Deploy customers (smoke)
     needs: build
-    if: github.event_name == 'push' && needs.build.outputs.customers_changed == 'true'
+    if: needs.build.outputs.customers_changed == 'true'
     runs-on: ubuntu-latest
     environment: render-customers-smoke
     env:
@@ -246,12 +226,128 @@ jobs:
           echo "Deploying customers to smoke."
           curl -fsS -X POST "$CUSTOMERS_HOOK"
 
+  deploy-qa-products:
+    name: Deploy products (qa)
+    needs:
+      - build
+      - deploy-smoke-products
+    if: needs.build.outputs.products_changed == 'true'
+    runs-on: ubuntu-latest
+    environment: render-products-qa
+    env:
+      QA_HOOK: ${{ secrets.RENDER_PRODUCTS_QA_DEPLOY_HOOK }}
+      DEPLOY_REF: ${{ needs.build.outputs.deploy_ref }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_REF }}
+
+      - name: Trigger Render deploy hook (products qa)
+        run: |
+          set -euo pipefail
+
+          if [ -z "${QA_HOOK:-}" ]; then
+            echo "Render deploy hook secret for products (qa) is missing." >&2
+            exit 1
+          fi
+
+          echo "Deploying products to qa."
+          curl -fsS -X POST "$QA_HOOK"
+
+  deploy-qa-orders:
+    name: Deploy orders (qa)
+    needs:
+      - build
+      - deploy-smoke-orders
+    if: needs.build.outputs.orders_changed == 'true'
+    runs-on: ubuntu-latest
+    environment: render-orders-qa
+    env:
+      QA_HOOK: ${{ secrets.RENDER_ORDERS_QA_DEPLOY_HOOK }}
+      DEPLOY_REF: ${{ needs.build.outputs.deploy_ref }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_REF }}
+
+      - name: Trigger Render deploy hook (orders qa)
+        run: |
+          set -euo pipefail
+
+          if [ -z "${QA_HOOK:-}" ]; then
+            echo "Render deploy hook secret for orders (qa) is missing." >&2
+            exit 1
+          fi
+
+          echo "Deploying orders to qa."
+          curl -fsS -X POST "$QA_HOOK"
+
+  deploy-qa-content:
+    name: Deploy content (qa)
+    needs:
+      - build
+      - deploy-smoke-content
+    if: needs.build.outputs.content_changed == 'true'
+    runs-on: ubuntu-latest
+    environment: render-content-qa
+    env:
+      QA_HOOK: ${{ secrets.RENDER_CONTENT_QA_DEPLOY_HOOK }}
+      DEPLOY_REF: ${{ needs.build.outputs.deploy_ref }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_REF }}
+
+      - name: Trigger Render deploy hook (content qa)
+        run: |
+          set -euo pipefail
+
+          if [ -z "${QA_HOOK:-}" ]; then
+            echo "Render deploy hook secret for content (qa) is missing." >&2
+            exit 1
+          fi
+
+          echo "Deploying content to qa."
+          curl -fsS -X POST "$QA_HOOK"
+
+  deploy-qa-customers:
+    name: Deploy customers (qa)
+    needs:
+      - build
+      - deploy-smoke-customers
+    if: needs.build.outputs.customers_changed == 'true'
+    runs-on: ubuntu-latest
+    environment: render-customers-qa
+    env:
+      QA_HOOK: ${{ secrets.RENDER_CUSTOMERS_QA_DEPLOY_HOOK }}
+      DEPLOY_REF: ${{ needs.build.outputs.deploy_ref }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_REF }}
+
+      - name: Trigger Render deploy hook (customers qa)
+        run: |
+          set -euo pipefail
+
+          if [ -z "${QA_HOOK:-}" ]; then
+            echo "Render deploy hook secret for customers (qa) is missing." >&2
+            exit 1
+          fi
+
+          echo "Deploying customers to qa."
+          curl -fsS -X POST "$QA_HOOK"
+
   deploy-products:
     name: Deploy products
     needs:
       - build
       - deploy-smoke-products
-    if: needs.build.outputs.products_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'products' || needs.build.outputs.deploy_app == 'all')
+    if: needs.build.outputs.products_changed == 'true'
     runs-on: ubuntu-latest
     environment: render-products
     env:
@@ -280,7 +376,7 @@ jobs:
     needs:
       - build
       - deploy-smoke-orders
-    if: needs.build.outputs.orders_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'orders' || needs.build.outputs.deploy_app == 'all')
+    if: needs.build.outputs.orders_changed == 'true'
     runs-on: ubuntu-latest
     environment: render-orders
     env:
@@ -309,7 +405,7 @@ jobs:
     needs:
       - build
       - deploy-smoke-content
-    if: needs.build.outputs.content_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'content' || needs.build.outputs.deploy_app == 'all')
+    if: needs.build.outputs.content_changed == 'true'
     runs-on: ubuntu-latest
     environment: render-content
     env:
@@ -338,7 +434,7 @@ jobs:
     needs:
       - build
       - deploy-smoke-customers
-    if: needs.build.outputs.customers_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'customers' || needs.build.outputs.deploy_app == 'all')
+    if: needs.build.outputs.customers_changed == 'true'
     runs-on: ubuntu-latest
     environment: render-customers
     env:
