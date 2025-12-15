@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       app:
-        description: Which app should be deployed?
+        description: Which app should be deployed to prod?
         required: true
         type: choice
         options:
@@ -35,9 +35,11 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DEPLOY_APP: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.app || 'all' }}
+      DEPLOY_ENV: ${{ github.event_name == 'workflow_dispatch' && 'prod' || 'smoke' }}
       DEPLOY_REF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.ref || github.sha }}
     outputs:
       deploy_app: ${{ steps.vars.outputs.deploy_app }}
+      deploy_env: ${{ steps.vars.outputs.deploy_env }}
       deploy_ref: ${{ steps.vars.outputs.deploy_ref }}
       products_changed: ${{ steps.changes.outputs.products }}
       orders_changed: ${{ steps.changes.outputs.orders }}
@@ -66,6 +68,7 @@ jobs:
         id: vars
         run: |
           echo "deploy_app=${DEPLOY_APP}" >> "$GITHUB_OUTPUT"
+          echo "deploy_env=${DEPLOY_ENV}" >> "$GITHUB_OUTPUT"
           echo "deploy_ref=${DEPLOY_REF}" >> "$GITHUB_OUTPUT"
 
       - name: Detect changes
@@ -141,11 +144,14 @@ jobs:
   deploy-products:
     name: Deploy products
     needs: build
-    if: needs.build.outputs.products_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'products' || needs.build.outputs.deploy_app == 'all')
+    if: |
+      (needs.build.outputs.deploy_env == 'smoke' && needs.build.outputs.products_changed == 'true') ||
+      (needs.build.outputs.deploy_env == 'prod' && (needs.build.outputs.deploy_app == 'products' || needs.build.outputs.deploy_app == 'all'))
     runs-on: ubuntu-latest
-    environment: render-products
+    environment: ${{ needs.build.outputs.deploy_env == 'smoke' && 'render-products-smoke' || 'render-products' }}
     env:
-      PRODUCTS_HOOK: ${{ secrets.RENDER_PRODUCTS_DEPLOY_HOOK }}
+      DEPLOY_ENV: ${{ needs.build.outputs.deploy_env }}
+      PRODUCTS_HOOK: ${{ needs.build.outputs.deploy_env == 'smoke' && secrets.RENDER_PRODUCTS_SMOKE_DEPLOY_HOOK || secrets.RENDER_PRODUCTS_DEPLOY_HOOK }}
       DEPLOY_REF: ${{ needs.build.outputs.deploy_ref }}
     steps:
       - name: Checkout repository
@@ -158,20 +164,24 @@ jobs:
           set -euo pipefail
 
           if [ -z "${PRODUCTS_HOOK:-}" ]; then
-            echo "Render deploy hook secret for products is missing." >&2
+            echo "Render deploy hook secret for products (${DEPLOY_ENV}) is missing." >&2
             exit 1
           fi
 
+          echo "Deploying products to ${DEPLOY_ENV}."
           curl -fsS -X POST "$PRODUCTS_HOOK"
 
   deploy-orders:
     name: Deploy orders
     needs: build
-    if: needs.build.outputs.orders_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'orders' || needs.build.outputs.deploy_app == 'all')
+    if: |
+      (needs.build.outputs.deploy_env == 'smoke' && needs.build.outputs.orders_changed == 'true') ||
+      (needs.build.outputs.deploy_env == 'prod' && (needs.build.outputs.deploy_app == 'orders' || needs.build.outputs.deploy_app == 'all'))
     runs-on: ubuntu-latest
-    environment: render-orders
+    environment: ${{ needs.build.outputs.deploy_env == 'smoke' && 'render-orders-smoke' || 'render-orders' }}
     env:
-      ORDERS_HOOK: ${{ secrets.RENDER_ORDERS_DEPLOY_HOOK }}
+      DEPLOY_ENV: ${{ needs.build.outputs.deploy_env }}
+      ORDERS_HOOK: ${{ needs.build.outputs.deploy_env == 'smoke' && secrets.RENDER_ORDERS_SMOKE_DEPLOY_HOOK || secrets.RENDER_ORDERS_DEPLOY_HOOK }}
       DEPLOY_REF: ${{ needs.build.outputs.deploy_ref }}
     steps:
       - name: Checkout repository
@@ -184,20 +194,24 @@ jobs:
           set -euo pipefail
 
           if [ -z "${ORDERS_HOOK:-}" ]; then
-            echo "Render deploy hook secret for orders is missing." >&2
+            echo "Render deploy hook secret for orders (${DEPLOY_ENV}) is missing." >&2
             exit 1
           fi
 
+          echo "Deploying orders to ${DEPLOY_ENV}."
           curl -fsS -X POST "$ORDERS_HOOK"
 
   deploy-content:
     name: Deploy content
     needs: build
-    if: needs.build.outputs.content_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'content' || needs.build.outputs.deploy_app == 'all')
+    if: |
+      (needs.build.outputs.deploy_env == 'smoke' && needs.build.outputs.content_changed == 'true') ||
+      (needs.build.outputs.deploy_env == 'prod' && (needs.build.outputs.deploy_app == 'content' || needs.build.outputs.deploy_app == 'all'))
     runs-on: ubuntu-latest
-    environment: render-content
+    environment: ${{ needs.build.outputs.deploy_env == 'smoke' && 'render-content-smoke' || 'render-content' }}
     env:
-      CONTENT_HOOK: ${{ secrets.RENDER_CONTENT_DEPLOY_HOOK }}
+      DEPLOY_ENV: ${{ needs.build.outputs.deploy_env }}
+      CONTENT_HOOK: ${{ needs.build.outputs.deploy_env == 'smoke' && secrets.RENDER_CONTENT_SMOKE_DEPLOY_HOOK || secrets.RENDER_CONTENT_DEPLOY_HOOK }}
       DEPLOY_REF: ${{ needs.build.outputs.deploy_ref }}
     steps:
       - name: Checkout repository
@@ -210,20 +224,24 @@ jobs:
           set -euo pipefail
 
           if [ -z "${CONTENT_HOOK:-}" ]; then
-            echo "Render deploy hook secret for content is missing." >&2
+            echo "Render deploy hook secret for content (${DEPLOY_ENV}) is missing." >&2
             exit 1
           fi
 
+          echo "Deploying content to ${DEPLOY_ENV}."
           curl -fsS -X POST "$CONTENT_HOOK"
 
   deploy-customers:
     name: Deploy customers
     needs: build
-    if: needs.build.outputs.customers_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'customers' || needs.build.outputs.deploy_app == 'all')
+    if: |
+      (needs.build.outputs.deploy_env == 'smoke' && needs.build.outputs.customers_changed == 'true') ||
+      (needs.build.outputs.deploy_env == 'prod' && (needs.build.outputs.deploy_app == 'customers' || needs.build.outputs.deploy_app == 'all'))
     runs-on: ubuntu-latest
-    environment: render-customers
+    environment: ${{ needs.build.outputs.deploy_env == 'smoke' && 'render-customers-smoke' || 'render-customers' }}
     env:
-      CUSTOMERS_HOOK: ${{ secrets.RENDER_CUSTOMERS_DEPLOY_HOOK }}
+      DEPLOY_ENV: ${{ needs.build.outputs.deploy_env }}
+      CUSTOMERS_HOOK: ${{ needs.build.outputs.deploy_env == 'smoke' && secrets.RENDER_CUSTOMERS_SMOKE_DEPLOY_HOOK || secrets.RENDER_CUSTOMERS_DEPLOY_HOOK }}
       DEPLOY_REF: ${{ needs.build.outputs.deploy_ref }}
     steps:
       - name: Checkout repository
@@ -236,8 +254,9 @@ jobs:
           set -euo pipefail
 
           if [ -z "${CUSTOMERS_HOOK:-}" ]; then
-            echo "Render deploy hook secret for customers is missing." >&2
+            echo "Render deploy hook secret for customers (${DEPLOY_ENV}) is missing." >&2
             exit 1
           fi
 
+          echo "Deploying customers to ${DEPLOY_ENV}."
           curl -fsS -X POST "$CUSTOMERS_HOOK"
