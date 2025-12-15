@@ -7,7 +7,7 @@ export default function Home() {
       <main className={styles.main}>
         <h1>Content</h1>
         <Button appName='content' className={styles.secondary}>
-          Learn more here
+          Learn more
         </Button>
       </main>
     </div>
