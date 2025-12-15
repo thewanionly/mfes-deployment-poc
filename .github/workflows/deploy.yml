@@ -248,7 +248,9 @@ jobs:
 
   deploy-products:
     name: Deploy products
-    needs: build
+    needs:
+      - build
+      - deploy-smoke-products
     if: github.event_name == 'workflow_dispatch' && (needs.build.outputs.deploy_app == 'products' || needs.build.outputs.deploy_app == 'all')
     runs-on: ubuntu-latest
     environment: render-products
@@ -275,7 +277,9 @@ jobs:
 
   deploy-orders:
     name: Deploy orders
-    needs: build
+    needs:
+      - build
+      - deploy-smoke-orders
     if: github.event_name == 'workflow_dispatch' && (needs.build.outputs.deploy_app == 'orders' || needs.build.outputs.deploy_app == 'all')
     runs-on: ubuntu-latest
     environment: render-orders
@@ -302,7 +306,9 @@ jobs:
 
   deploy-content:
     name: Deploy content
-    needs: build
+    needs:
+      - build
+      - deploy-smoke-content
     if: github.event_name == 'workflow_dispatch' && (needs.build.outputs.deploy_app == 'content' || needs.build.outputs.deploy_app == 'all')
     runs-on: ubuntu-latest
     environment: render-content
@@ -329,7 +335,9 @@ jobs:
 
   deploy-customers:
     name: Deploy customers
-    needs: build
+    needs:
+      - build
+      - deploy-smoke-customers
     if: github.event_name == 'workflow_dispatch' && (needs.build.outputs.deploy_app == 'customers' || needs.build.outputs.deploy_app == 'all')
     runs-on: ubuntu-latest
     environment: render-customers
