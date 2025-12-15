@@ -251,7 +251,7 @@ jobs:
     needs:
       - build
       - deploy-smoke-products
-    if: github.event_name == 'workflow_dispatch' && (needs.build.outputs.deploy_app == 'products' || needs.build.outputs.deploy_app == 'all')
+    if: needs.build.outputs.products_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'products' || needs.build.outputs.deploy_app == 'all')
     runs-on: ubuntu-latest
     environment: render-products
     env:
@@ -280,7 +280,7 @@ jobs:
     needs:
       - build
       - deploy-smoke-orders
-    if: github.event_name == 'workflow_dispatch' && (needs.build.outputs.deploy_app == 'orders' || needs.build.outputs.deploy_app == 'all')
+    if: needs.build.outputs.orders_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'orders' || needs.build.outputs.deploy_app == 'all')
     runs-on: ubuntu-latest
     environment: render-orders
     env:
@@ -309,7 +309,7 @@ jobs:
     needs:
       - build
       - deploy-smoke-content
-    if: github.event_name == 'workflow_dispatch' && (needs.build.outputs.deploy_app == 'content' || needs.build.outputs.deploy_app == 'all')
+    if: needs.build.outputs.content_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'content' || needs.build.outputs.deploy_app == 'all')
     runs-on: ubuntu-latest
     environment: render-content
     env:
@@ -338,7 +338,7 @@ jobs:
     needs:
       - build
       - deploy-smoke-customers
-    if: github.event_name == 'workflow_dispatch' && (needs.build.outputs.deploy_app == 'customers' || needs.build.outputs.deploy_app == 'all')
+    if: needs.build.outputs.customers_changed == 'true' && (github.event_name == 'push' || needs.build.outputs.deploy_app == 'customers' || needs.build.outputs.deploy_app == 'all')
     runs-on: ubuntu-latest
     environment: render-customers
     env:
