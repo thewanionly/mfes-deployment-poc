@@ -96,26 +96,17 @@ jobs:
           content_changed="${{ steps.changes.outputs.content }}"
           customers_changed="${{ steps.changes.outputs.customers }}"
 
-          if [ "$DEPLOY_APP" = "all" ]; then
-            if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-              pnpm build
-              exit 0
+          ran=0
+          for app in products orders content customers; do
+            changed_var="${app}_changed"
+            if [ "${!changed_var}" = "true" ]; then
+              pnpm build --filter="$app"
+              ran=1
             fi
+          done
 
-            ran=0
-            for app in products orders content customers; do
-              changed_var="${app}_changed"
-              if [ "${!changed_var}" = "true" ]; then
-                pnpm build --filter="$app"
-                ran=1
-              fi
-            done
-
-            if [ "$ran" = "0" ]; then
-              echo "No relevant changes detected for products, orders, content, or customers; skipping build."
-            fi
-          else
-            pnpm build --filter="$DEPLOY_APP"
+          if [ "$ran" = "0" ]; then
+            echo "No relevant changes detected for products, orders, content, or customers; skipping build."
           fi
 
   deploy-smoke-products:
