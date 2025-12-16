@@ -338,6 +338,7 @@ jobs:
     needs:
       - build
       - deploy-smoke-products
+      - deploy-qa-products
     if: needs.build.outputs.products_changed == 'true'
     runs-on: ubuntu-latest
     environment: render-products
@@ -367,6 +368,7 @@ jobs:
     needs:
       - build
       - deploy-smoke-orders
+      - deploy-qa-orders
     if: needs.build.outputs.orders_changed == 'true'
     runs-on: ubuntu-latest
     environment: render-orders
@@ -396,6 +398,7 @@ jobs:
     needs:
       - build
       - deploy-smoke-content
+      - deploy-qa-content
     if: needs.build.outputs.content_changed == 'true'
     runs-on: ubuntu-latest
     environment: render-content
@@ -425,6 +428,7 @@ jobs:
     needs:
       - build
       - deploy-smoke-customers
+      - deploy-qa-customers
     if: needs.build.outputs.customers_changed == 'true'
     runs-on: ubuntu-latest
     environment: render-customers
