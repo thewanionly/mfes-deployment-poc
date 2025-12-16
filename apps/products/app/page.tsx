@@ -9,7 +9,7 @@ export default function Home() {
         <p>
           Lorem ipsum dolor sit amet consectetur adipisicing elit. Id sint dicta aliquid ipsum magni
           facilis sapiente fugit dolor eveniet enim ratione eaque nostrum, in perferendis placeat
-          eligendi inventore. Products!
+          eligendi inventore. Products! dfsads
         </p>
         <Button appName='products' className={styles.secondary}>
           Learn more
